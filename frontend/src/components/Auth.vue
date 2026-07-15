@@ -122,7 +122,12 @@ const handleSubmit = async () => {
 
     if (isLogin.value) {
       successMessage.value = '¡Conectado con éxito! Redirigiendo...';
+      
+      // Guardamos los datos del usuario
       localStorage.setItem('usuarioLogueado', JSON.stringify(data.user));
+      
+      // NUEVO: Guardamos la "pulsera VIP" (el token) en el navegador
+      localStorage.setItem('token', data.token); 
       
       setTimeout(() => {
         router.push('/dashboard'); 

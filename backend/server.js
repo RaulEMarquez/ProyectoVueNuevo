@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = 3000;
@@ -9,6 +10,7 @@ const PORT = 3000;
 // Middlewares
 app.use(cors()); // Permite que tu frontend en Vue se conecte sin problemas de CORS
 app.use(express.json()); // Permite recibir datos en formato JSON
+const SECRET_KEY = 'secreto_escolar_super_seguro_123'; // <--- NUEVO (Con esto firmas los tokens)
 
 // Conexión a la base de datos SQLite (se creará un archivo llamado escuela.db)
 const db = new sqlite3.Database('./escuela.db', (err) => {
@@ -209,7 +211,7 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// 2. ENDPOINT PARA INICIAR SESIÓN
+// 2. ENDPOINT PARA INICIAR SESIÓN CON JWT
 app.post('/login', (req, res) => {
     const { usuario, password } = req.body;
 
@@ -228,14 +230,24 @@ app.post('/login', (req, res) => {
             return res.status(400).json({ message: 'El usuario o la contraseña no coinciden.' });
         }
 
-        // Comparar la contraseña ingresada con el hash guardado en la base de datos
         const validPassword = await bcrypt.compare(password, user.Password);
         
         if (!validPassword) {
             return res.status(400).json({ message: 'El usuario o la contraseña no coinciden.' });
         }
 
-        // Si todo está bien, mandamos la respuesta correcta junto con los datos del usuario
+        // ==========================================
+        // AQUÍ ESTÁ LA MAGIA DEL JWT
+        // ==========================================
+        // Creamos el token guardando el ID y el Rol del usuario adentro.
+        // Y le decimos que caduca en 2 horas (expiresIn).
+        const token = jwt.sign(
+            { idUsuario: user.idUsuario, idRol: user.idRol }, 
+            SECRET_KEY, 
+            { expiresIn: '2h' }
+        );
+
+        // Si todo está bien, mandamos el mensaje, los datos Y EL TOKEN
         res.status(200).json({
             message: '¡Inicio de sesión correcto!',
             user: {
@@ -243,7 +255,8 @@ app.post('/login', (req, res) => {
                 nombre: user.Nombre,
                 usuario: user.Usuario,
                 idRol: user.idRol
-            }
+            },
+            token: token // <--- Mandamos la pulsera VIP al frontend
         });
     });
 });
